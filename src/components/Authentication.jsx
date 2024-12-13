@@ -15,18 +15,20 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
 } from "firebase/auth";
+import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
 
 const Authentication = () => {
-  const [isSignUp, setIsSignUp] = useState(false); // Alterna entre registre i inici de sessió
+  const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isSeller, setIsSeller] = useState(false);
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
 
   const auth = getAuth();
+  const db = getFirestore();
   const googleProvider = new GoogleAuthProvider();
 
-  // Gestió del registre/inici de sessió
   const handleSubmit = async () => {
     setError(null);
     try {
@@ -36,35 +38,61 @@ const Authentication = () => {
           email,
           password
         );
-        setUser(userCredential.user);
+        const user = userCredential.user;
+  
+        // Guarda el rol del usuario correctamente en Firestore
+        await setDoc(doc(db, "User", user.uid), {
+          email: user.email,
+          role: isSeller ? "seller" : "user",
+        });
+  
+        setUser(user);
+        setIsSeller(isSeller);
       } else {
-        const userCredential = await signInWithEmailAndPassword(
-          auth,
-          email,
-          password
-        );
-        setUser(userCredential.user);
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+  
+        // Asegúrate de obtener correctamente el rol desde Firestore
+        const userDoc = await getDoc(doc(db, "User", user.uid));
+        if (userDoc.exists()) {
+          const role = userDoc.data().role;
+          setIsSeller(role === "seller");
+        }
+  
+        setUser(user);
       }
     } catch (err) {
       setError(err.message);
     }
   };
 
-  // Inici de sessió amb Google
   const handleGoogleSignIn = async () => {
     setError(null);
     try {
       const result = await signInWithPopup(auth, googleProvider);
-      setUser(result.user);
+      const user = result.user;
+
+      // Desa el rol de l'usuari per defecte com "user"
+      const userDocRef = doc(db, "User", user.uid);
+      await setDoc(userDocRef, { email: user.email, role: "user" }, { merge: true });
+
+      // Comprova el rol a Firestore
+      const userDoc = await getDoc(userDocRef);
+      if (userDoc.exists()) {
+        const role = userDoc.data().role;
+        setIsSeller(role === "seller");
+      }
+
+      setUser(user);
     } catch (err) {
       setError(err.message);
     }
   };
 
-  // Tancament de sessió
   const handleSignOut = async () => {
     await signOut(auth);
     setUser(null);
+    setIsSeller(false); // Reinicia isSeller després del tancament de sessió
   };
 
   return (
@@ -78,9 +106,10 @@ const Authentication = () => {
       }}
     >
       {user ? (
-        // Si l'usuari ha iniciat sessió
         <Box>
-          <Typography variant="h6">Benvingut, {user.email}</Typography>
+          <Typography variant="h6">
+            Benvingut, {user.email} {isSeller && "(Venedor)"}
+          </Typography>
           <Button
             variant="contained"
             color="primary"
@@ -91,7 +120,6 @@ const Authentication = () => {
           </Button>
         </Box>
       ) : (
-        // Formulari d'autenticació
         <Box>
           <Typography variant="h5" gutterBottom>
             {isSignUp ? "Registre" : "Inicia Sessió"}
@@ -117,6 +145,18 @@ const Authentication = () => {
             fullWidth
             sx={{ marginBottom: "20px" }}
           />
+          {isSignUp && (
+            <Typography variant="body2">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={isSeller}
+                  onChange={() => setIsSeller(!isSeller)}
+                />
+                Registrar-me com a venedor
+              </label>
+            </Typography>
+          )}
           <Button
             variant="contained"
             color="primary"

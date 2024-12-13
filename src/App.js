@@ -1,14 +1,17 @@
 import React from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom"; // Importa el Router
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import Banner from "./components/Banner";
 import ProductGrid from "./components/ProductGrid";
 import Footer from "./components/Footer";
-import ProductDetails from "./components/ProductDetails"; // Importa la página de detalles
+import ProductDetails from "./components/ProductDetails";
+import AdminDashboard from "./components/AdminDashboard";
+import Authentication from "./components/Authentication"; // Importa el component d'autenticació
 import { Box, CssBaseline } from "@mui/material";
 
 const Success = () => <h1>Pagament completat!</h1>;
 const Cancel = () => <h1>El pagament s'ha cancel·lat.</h1>;
+
 const App = () => {
   return (
     <Router>
@@ -34,16 +37,16 @@ const App = () => {
               </>
             }
           />
-
           <Route path="/product/:id" element={<ProductDetails />} />
           <Route path="/success" element={<Success />} />
           <Route path="/cancel" element={<Cancel />} />
+          <Route path="/admin-dashboard" element={<AdminDashboard />} />
+          <Route path="/authentication" element={<Authentication />} /> {/* Ruta afegida */}
         </Routes>
         {/* Peu de pàgina */}
         <Footer />
       </Box>
     </Router>
-    
   );
 };
 

@@ -19,23 +19,52 @@ import {
   addDoc,
   deleteDoc,
   doc,
+  query,
+  where,
 } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
 
 const AdminDashboard = () => {
   const [products, setProducts] = useState([]);
-  const [orders, setOrders] = useState([]);
   const [openDialog, setOpenDialog] = useState(false);
   const [newProduct, setNewProduct] = useState({
     name: "",
     price: "",
     image: "",
   });
-
+  const [isSeller, setIsSeller] = useState(false);
   const db = getFirestore();
+  const auth = getAuth();
 
-  // Carrega els productes de Firestore
+  // Verifica si el usuario tiene rol de vendedor
+  useEffect(() => {
+    const checkSellerRole = async () => {
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        const userDoc = await getDocs(doc(db, "User", currentUser.uid));
+        if (userDoc.exists() && userDoc.data().role === "seller") {
+          setIsSeller(true);
+        } else {
+          setIsSeller(false);
+        }
+      }
+    };
+
+    checkSellerRole();
+  }, [auth, db]);
+
+  // Carga los productos asociados al vendedor
   const fetchProducts = async () => {
-    const querySnapshot = await getDocs(collection(db, "products"));
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+
+    const sellerId = currentUser.uid;
+    const productsQuery = query(
+      collection(db, "Products"),
+      where("sellerId", "==", sellerId)
+    );
+
+    const querySnapshot = await getDocs(productsQuery);
     const productsData = querySnapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
@@ -43,111 +72,92 @@ const AdminDashboard = () => {
     setProducts(productsData);
   };
 
-  // Carrega les comandes de Firestore
-  const fetchOrders = async () => {
-    const querySnapshot = await getDocs(collection(db, "orders"));
-    const ordersData = querySnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
-    setOrders(ordersData);
-  };
-
-  // Afegeix un nou producte a Firestore
+  // Añade un nuevo producto
   const handleAddProduct = async () => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+
     try {
-      await addDoc(collection(db, "products"), newProduct);
+      await addDoc(collection(db, "Products"), {
+        ...newProduct,
+        sellerId: currentUser.uid, // Asocia el producto al vendedor
+      });
       fetchProducts();
       setOpenDialog(false);
       setNewProduct({ name: "", price: "", image: "" });
     } catch (error) {
-      console.error("Error adding product:", error);
+      console.error("Error añadiendo producto:", error);
     }
   };
 
-  // Elimina un producte de Firestore
+  // Elimina un producto
   const handleDeleteProduct = async (id) => {
     try {
-      await deleteDoc(doc(db, "products", id));
+      await deleteDoc(doc(db, "Products", id));
       fetchProducts();
     } catch (error) {
-      console.error("Error deleting product:", error);
+      console.error("Error eliminando producto:", error);
     }
   };
 
+  // Carga inicial de productos
   useEffect(() => {
     fetchProducts();
-    fetchOrders();
-  }, []);
+  }, [auth]);
+
+  // Si no es vendedor, muestra un mensaje de error
+  if (!isSeller) {
+    return (
+      <Box sx={{ textAlign: "center", padding: "50px" }}>
+        <Typography variant="h6">
+          No tienes permisos para acceder a este panel.
+        </Typography>
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ padding: "20px", maxWidth: "1200px", margin: "auto" }}>
       <Typography variant="h4" gutterBottom>
-        Panell d’Administració
+        Panel de Productos
       </Typography>
 
-      {/* Gestió de Productes */}
-      <Box sx={{ marginBottom: "40px" }}>
-        <Typography variant="h5" gutterBottom>
-          Productes
-        </Typography>
-        <Button
-          variant="contained"
-          color="primary"
-          sx={{ marginBottom: "20px" }}
-          onClick={() => setOpenDialog(true)}
-        >
-          Afegir Producte
-        </Button>
-        <Grid container spacing={3}>
-          {products.map((product) => (
-            <Grid item xs={12} sm={6} md={4} key={product.id}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6">{product.name}</Typography>
-                  <Typography variant="body2">Preu: €{product.price}</Typography>
-                  <Button
-                    variant="outlined"
-                    color="error"
-                    sx={{ marginTop: "10px" }}
-                    onClick={() => handleDeleteProduct(product.id)}
-                  >
-                    Eliminar
-                  </Button>
-                </CardContent>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
-      </Box>
+      <Button
+        variant="contained"
+        color="primary"
+        sx={{ marginBottom: "20px" }}
+        onClick={() => setOpenDialog(true)}
+      >
+        Añadir Producto
+      </Button>
 
-      {/* Gestió de Comandes */}
-      <Box>
-        <Typography variant="h5" gutterBottom>
-          Comandes
-        </Typography>
-        {orders.map((order) => (
-          <Card key={order.id} sx={{ marginBottom: "15px" }}>
-            <CardContent>
-              <Typography variant="body1">ID Comanda: {order.id}</Typography>
-              <Typography variant="body2">
-                Total: €{order.total}
-              </Typography>
-              <Typography variant="body2">
-                Client: {order.customerName}
-              </Typography>
-              <Typography variant="body2">Estat: {order.status}</Typography>
-            </CardContent>
-          </Card>
+      <Grid container spacing={3}>
+        {products.map((product) => (
+          <Grid item xs={12} sm={6} md={4} key={product.id}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6">{product.name}</Typography>
+                <Typography variant="body2">Precio: €{product.price}</Typography>
+                <Button
+                  variant="outlined"
+                  color="error"
+                  sx={{ marginTop: "10px" }}
+                  onClick={() => handleDeleteProduct(product.id)}
+                >
+                  Eliminar
+                </Button>
+              </CardContent>
+            </Card>
+          </Grid>
         ))}
-      </Box>
+      </Grid>
 
-      {/* Diàleg per afegir producte */}
+      {/* Diálogo para añadir un nuevo producto */}
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
-        <DialogTitle>Afegir Nou Producte</DialogTitle>
+        <DialogTitle>Añadir Nuevo Producto</DialogTitle>
         <DialogContent>
           <TextField
-            label="Nom del Producte"
+            label="Nombre del Producto"
             fullWidth
             margin="dense"
             value={newProduct.name}
@@ -156,7 +166,7 @@ const AdminDashboard = () => {
             }
           />
           <TextField
-            label="Preu"
+            label="Precio"
             type="number"
             fullWidth
             margin="dense"
@@ -166,7 +176,7 @@ const AdminDashboard = () => {
             }
           />
           <TextField
-            label="URL de la Imatge"
+            label="URL de la Imagen"
             fullWidth
             margin="dense"
             value={newProduct.image}
@@ -177,10 +187,10 @@ const AdminDashboard = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)} color="secondary">
-            Cancel·lar
+            Cancelar
           </Button>
           <Button onClick={handleAddProduct} color="primary">
-            Afegir
+            Añadir
           </Button>
         </DialogActions>
       </Dialog>

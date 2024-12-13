@@ -1,12 +1,23 @@
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 
+// Obté tots els productes
 export const fetchProducts = async () => {
   const productsCollection = collection(db, "Products");
   const productSnapshot = await getDocs(productsCollection);
-  const productList = productSnapshot.docs.map((doc) => ({
+  return productSnapshot.docs.map((doc) => ({
     id: doc.id,
     ...doc.data(),
   }));
-  return productList;
+};
+
+// Obté productes associats a un venedor específic
+export const fetchSellerProducts = async (sellerId) => {
+  const productsCollection = collection(db, "Products");
+  const productsQuery = query(productsCollection, where("sellerId", "==", sellerId));
+  const productSnapshot = await getDocs(productsQuery);
+  return productSnapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+  }));
 };

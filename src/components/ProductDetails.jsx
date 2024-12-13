@@ -7,13 +7,14 @@ import {
   Card,
   CardMedia,
   CardContent,
+  CircularProgress,
 } from "@mui/material";
 import { useParams } from "react-router-dom";
-import { db } from "../firebaseConfig"; // Importa la configuración de Firestore
-import { doc, getDoc } from "firebase/firestore";
+import { collection, query, where, getDocs } from "firebase/firestore";
+import { db } from "../firebaseConfig"; // Asegúrate de importar correctamente tu configuración de Firebase
 
 const ProductDetails = () => {
-  const { id } = useParams(); // Obtener el ID del producto desde la URL
+  const { id } = useParams(); // Obtener el ID desde la URL
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -21,13 +22,17 @@ const ProductDetails = () => {
     const fetchProduct = async () => {
       setLoading(true);
       try {
-        const docRef = doc(db, "products", id); // Cambia "products" por el nombre de tu colección
-        const docSnap = await getDoc(docRef);
+        // Realiza una consulta donde el campo `id` coincide con el valor recibido por la URL
+        const productsRef = collection(db, "Products"); // Asegúrate de que "Products" sea tu colección
+        const q = query(productsRef, where("id", "==", id)); 
+        const querySnapshot = await getDocs(q);
 
-        if (docSnap.exists()) {
-          setProduct(docSnap.data());
+        if (!querySnapshot.empty) {
+          // Extrae el primer producto encontrado (asume que `id` es único)
+          const productData = querySnapshot.docs[0].data();
+          setProduct(productData);
         } else {
-          console.log("No se encontró el producto.");
+          console.log("Producto no encontrado.");
         }
       } catch (error) {
         console.error("Error obteniendo los datos del producto:", error);
@@ -49,7 +54,7 @@ const ProductDetails = () => {
           height: "100vh",
         }}
       >
-        <Typography variant="h6">Carregant informació del producte...</Typography>
+        <CircularProgress />
       </Box>
     );
   }
@@ -64,7 +69,7 @@ const ProductDetails = () => {
           height: "100vh",
         }}
       >
-        <Typography variant="h6">No s'ha trobat el producte.</Typography>
+        <Typography variant="h6">No se encontró el producto.</Typography>
       </Box>
     );
   }
@@ -72,38 +77,33 @@ const ProductDetails = () => {
   return (
     <Box sx={{ padding: "20px", maxWidth: "1200px", margin: "auto" }}>
       <Grid container spacing={4}>
-        {/* Imatge del producte */}
         <Grid item xs={12} md={6}>
           <Card>
             <CardMedia
               component="img"
-              image={product.image}
+              image={product.imageURL || "https://via.placeholder.com/400"}
               alt={product.name}
               sx={{ height: "400px", objectFit: "contain" }}
             />
           </Card>
         </Grid>
-
-        {/* Informació del producte */}
         <Grid item xs={12} md={6}>
-          <Box>
-            <Typography variant="h4" gutterBottom>
-              {product.name}
-            </Typography>
-            <Typography variant="h6" color="text.secondary" gutterBottom>
-              Preu: {product.price} €
-            </Typography>
-            <Typography variant="body1" gutterBottom>
-              {product.description}
-            </Typography>
-            <Box sx={{ marginTop: "20px", display: "flex", gap: "15px" }}>
-              <Button variant="contained" color="primary">
-                Afegir al carretó
-              </Button>
-              <Button variant="outlined" color="secondary">
-                Comprar ara
-              </Button>
-            </Box>
+          <Typography variant="h4" gutterBottom>
+            {product.name}
+          </Typography>
+          <Typography variant="h6" color="text.secondary" gutterBottom>
+            Precio: {product.price} €
+          </Typography>
+          <Typography variant="body1" gutterBottom>
+            {product.description}
+          </Typography>
+          <Box sx={{ marginTop: "20px", display: "flex", gap: "15px" }}>
+            <Button variant="contained" color="primary">
+              Añadir al carrito
+            </Button>
+            <Button variant="outlined" color="secondary">
+              Comprar ahora
+            </Button>
           </Box>
         </Grid>
       </Grid>
