@@ -34,12 +34,12 @@ const Footer = () => {
           Condicions d'Ús
         </Link>
         <Link
-          href="#"
+          href="/contact"
           underline="hover"
           sx={{ color: "white", fontSize: "14px" }}
         >
-          Contacte
-        </Link>
+          Contacto
+      </Link>
       </Box>
     </Box>
   );

@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const Stripe = require('stripe');
+const nodemailer = require("nodemailer");
 
 // Configura Stripe amb la teva clau secreta
 const stripe = new Stripe('sk_test_51QSgAiBNoAIrMHfd2ODv4EOMYgdFmkWd26cTvPkghiDoYYGy5y60TDufUEd6Tx0pcofEUontRcKAsCMBwUFW8kaJ00LJXenob8'); // Substitueix amb la clau secreta
@@ -50,4 +51,31 @@ app.get('/', (req, res) => {
 // Executa el servidor
 app.listen(PORT, () => {
   console.log(`Servidor escoltant al port ${PORT}`);
+});
+
+app.post("/send-email", async (req, res) => {
+  const { name, email, subject, message } = req.body;
+
+  const transporter = nodemailer.createTransport({
+    service: "gmail", // Cambiar según tu proveedor
+    auth: {
+      user: "ilopez@prateducacio.com",
+      pass: "xxnv vsld vasz ldpy",
+    },
+  });
+
+  const mailOptions = {
+    from: email,
+    to: "ilopez@prateducacio.com",
+    subject: `${subject} - de ${name}`,
+    text: message,
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    res.status(200).send("Email enviado con éxito");
+  } catch (error) {
+    console.error("Error enviando email:", error);
+    res.status(500).send("Error enviando email");
+  }
 });

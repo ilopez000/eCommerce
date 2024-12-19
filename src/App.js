@@ -8,6 +8,7 @@ import ProductDetails from "./components/ProductDetails";
 import AdminDashboard from "./components/AdminDashboard";
 import Authentication from "./components/Authentication"; // Importa el component d'autenticació
 import { Box, CssBaseline } from "@mui/material";
+import ContactForm from "./components/ContactForm";
 
 const Success = () => <h1>Pagament completat!</h1>;
 const Cancel = () => <h1>El pagament s'ha cancel·lat.</h1>;
@@ -42,6 +43,7 @@ const App = () => {
           <Route path="/cancel" element={<Cancel />} />
           <Route path="/admin-dashboard" element={<AdminDashboard />} />
           <Route path="/authentication" element={<Authentication />} /> {/* Ruta afegida */}
+          <Route path="/contact" element={<ContactForm />} />
         </Routes>
         {/* Peu de pàgina */}
         <Footer />
